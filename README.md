@@ -8,6 +8,9 @@ sdk_version: 5.33.0
 app_file: app.py
 pinned: false
 license: mit
+tags:
+  - mcp-server-track
+  - agent-demo-track
 ---
 
 Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
