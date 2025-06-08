@@ -250,54 +250,6 @@ def get_vendor_analysis(csv_content: str, vendor: str = "") -> Dict:
     except Exception as e:
         return {"error": f"Vendor analysis failed: {str(e)}"}
 
-def detect_financial_anomalies(custom_query: str = "") -> Dict:
-    """
-    Detect anomalies using Modal's LLM-powered analysis.
-    
-    Performs intelligent anomaly detection on financial transactions using Modal's
-    serverless LLM functions to identify spending spikes, unusual patterns, and suspicious transactions.
-    
-    Args:
-        custom_query: Optional custom analysis query for specific anomaly detection
-        
-    Returns:
-        Dictionary containing anomaly analysis results and recommendations
-    """
-    global current_session_id
-    
-    try:
-        if not current_session_id:
-            return {"error": "No financial data indexed. Please upload and analyze a CSV file first."}
-        
-        if not modal_available or not modal_query_data:
-            return {"error": "Modal LLM functions not available. Using basic analysis."}
-        
-        # Use custom query if provided, otherwise default anomaly detection query
-        if custom_query.strip():
-            query = custom_query
-            analysis_type = "custom"
-        else:
-            query = "Detect any unusual spending patterns, anomalies, or suspicious transactions in this financial data. Look for spending spikes, unusual vendors, or irregular amounts."
-            analysis_type = "comprehensive"
-        
-        # Call Modal function for anomaly detection
-        print(f"🔍 Running anomaly detection for session: {current_session_id}")
-        modal_result = modal_query_data.remote(query, current_session_id)
-        
-        if modal_result.get("status") == "success":
-            return {
-                "status": "success",
-                "anomaly_analysis": modal_result.get("llm_analysis", "No analysis available"),
-                "analysis_type": analysis_type,
-                "matching_transactions": modal_result.get("matching_transactions", 0),
-                "total_amount": modal_result.get("total_amount", 0),
-                "session_id": current_session_id
-            }
-        else:
-            return {"error": f"Modal anomaly detection failed: {modal_result.get('error', 'Unknown error')}"}
-        
-    except Exception as e:
-        return {"error": f"Anomaly detection failed: {str(e)}"}
 
 def query_financial_data(question: str) -> Dict:
     """
@@ -359,94 +311,92 @@ with gr.Blocks(title="SmartLedger - Financial Analysis", theme=gr.themes.Soft())
         gr.Markdown("# 📊 SmartLedger - Smart Business Accounting")
         gr.Markdown("Upload your accounting ledger CSV file to analyze transactions, spending patterns, and get financial insights.")
         
-        with gr.Row():
-            with gr.Column(scale=1):
-                gr.Markdown("### 📁 Upload & Analyze")
-                
-                csv_file = gr.File(
-                    label="Upload CSV Ledger",
-                    file_types=[".csv"],
-                    value=None
-                )
-                
-                gr.Markdown("*Required columns: date, vendor, amount*\n*Optional: category, description*")
-                
-                analyze_btn = gr.Button("Analyze Ledger", variant="primary", size="lg")
-                
-                with gr.Accordion("📋 CSV Format Guide", open=False):
-                    gr.Textbox(
-                        value="""date,vendor,amount,category,description
+        # Upload & Analyze Section
+        gr.Markdown("## 📁 Upload Ledger")
+        
+        csv_file = gr.File(
+            label="Upload CSV Ledger",
+            file_types=[".csv"],
+            value=None
+        )
+        
+        gr.Markdown("*Required columns: date, vendor, amount*\n*Optional: category, description*")
+        
+        analyze_btn = gr.Button("Upload Ledger", variant="primary", size="lg")
+        
+        with gr.Accordion("📋 CSV Format Guide", open=False):
+            gr.Textbox(
+                value="""date,vendor,amount,category,description
 2024-01-15,Coffee Shop,4.50,Meals,Morning coffee
 2024-01-16,Gas Station,45.00,Vehicle,Fuel
 2024-01-17,Office Depot,23.99,Supplies,Paper""",
-                        label="Expected CSV Format",
-                        interactive=False,
-                        lines=4,
-                        max_lines=4
-                    )
+                label="Expected CSV Format",
+                interactive=False,
+                lines=4,
+                max_lines=4
+            )
+        
+        # Upload Status Section
+        gr.Markdown("## 📤 Upload Status")
+        
+        combined_status_analysis = gr.Textbox(
+            label="Status & Financial Insights",
+            interactive=False,
+            lines=15,
+            value="Upload a CSV file to begin analysis"
+        )
+        
+        ledger_dataframe = gr.Dataframe(
+            label="Transaction Data",
+            interactive=False,
+            wrap=True,
+            value=None
+        )
+        
+        # AI Analysis Section
+        gr.Markdown("## 🤖 AI-Powered Analysis")
+        
+        # Questions Section
+        gr.Markdown("### 💬 Ask Questions About Your Data")
+        question_input = gr.Textbox(
+            label="Natural Language Query",
+            placeholder="e.g., What are my highest spending categories? Show me restaurant transactions.",
+            lines=2
+        )
+        query_btn = gr.Button("Get AI Insights", variant="primary", size="lg")
+        
+        # AI Results
+        llm_results = gr.Textbox(
+            label="AI Analysis Results",
+            interactive=False,
+            lines=12,
+            value="Upload and analyze a CSV file to enable AI-powered insights"
+        )
+        
+        # Quick Test Section
+        gr.Markdown("## 🎯 Quick Test")
+        sample_btn = gr.Button("Load Sample Data", variant="primary", size="lg")
+        
+        # System Status Section  
+        gr.Markdown("## 🔗 System Status & Integration")
+        
+        # Modal Status
+        if modal_available:
+            gr.Markdown("✅ **Modal AI Status:** Connected and Ready\n🚀 **Features:** Smart transaction analysis, natural language queries\n📡 **Functions:** Session management, keyword search, basic insights")
+        else:
+            gr.Markdown("❌ **Modal AI Status:** Not available\n⚠️ **Mode:** Basic analysis only (no AI features)")
             
-            with gr.Column(scale=2):
-                gr.Markdown("### 📈 Analysis Results")
-                
-                status_text = gr.Textbox(
-                    label="Status",
-                    interactive=False,
-                    lines=2,
-                    value="Upload a CSV file to begin analysis"
-                )
-                
-                ledger_dataframe = gr.Dataframe(
-                    label="Transaction Data",
-                    interactive=False,
-                    wrap=True,
-                    value=None
-                )
-                
-                analysis_text = gr.Textbox(
-                    label="Financial Insights", 
-                    interactive=False,
-                    lines=15,
-                    value=""
-                )
-        
-        # LLM Analysis Section
-        with gr.Row():
-            gr.Markdown("## 🤖 AI-Powered Analysis")
-        
-        with gr.Row():
-            with gr.Column(scale=1):
-                gr.Markdown("### 🔍 Anomaly Detection")
-                anomaly_btn = gr.Button("Detect Anomalies", variant="primary")
-                
-                gr.Markdown("### 💬 Ask Questions")
-                question_input = gr.Textbox(
-                    label="Ask about your data",
-                    placeholder="e.g., What are my highest spending categories this month?",
-                    lines=2
-                )
-                query_btn = gr.Button("Get Insights", variant="secondary")
-            
-            with gr.Column(scale=2):
-                llm_results = gr.Textbox(
-                    label="AI Analysis Results",
-                    interactive=False,
-                    lines=10,
-                    value="Upload and analyze a CSV file to enable AI-powered insights"
-                )
-        
-        with gr.Row():
-            with gr.Column():
-                gr.Markdown("### 🎯 Quick Test")
-                sample_btn = gr.Button("Load Sample Data", variant="secondary")
-                
-            with gr.Column():
-                gr.Markdown("### 🔗 Modal LLM Integration")
-                if modal_available:
-                    gr.Markdown("✅ **Modal Status:** Connected\n🚀 **AI Models:** Embedding + LLM ready\n📡 **Functions:** `create_index`, `query_data`, `check_health`")
-                else:
-                    gr.Markdown("❌ **Modal Status:** Not available\n⚠️ **Fallback:** Basic analysis only")
-                    
-                gr.Markdown("**Available MCP Tools:**\n- `analyze_ledger_from_csv`\n- `get_spending_by_category`\n- `get_vendor_analysis`\n- `detect_financial_anomalies`\n- `query_financial_data`")
+        # MCP Tools Info
+        with gr.Accordion("🛠️ Available MCP Tools", open=False):
+            gr.Markdown("""
+**Core Analysis Tools:**
+- `analyze_ledger_from_csv` - Process and index financial data
+- `get_spending_by_category` - Category-based spending breakdown  
+- `get_vendor_analysis` - Vendor spending patterns
+- `query_financial_data` - Natural language financial queries
+
+**Integration:** These tools are available for external AI agents via MCP protocol.
+            """)
         
         # Enhanced CSV handler with Modal integration
         def enhanced_csv_upload(csv_file):
@@ -478,20 +428,22 @@ with gr.Blocks(title="SmartLedger - Financial Analysis", theme=gr.themes.Soft())
                 except Exception as e:
                     status += f"\n⚠️ Modal analysis error: {str(e)}"
             
-            return status, df, analysis
+            # Combine status and analysis
+            combined_output = f"{status}\n\n--- FINANCIAL INSIGHTS ---\n{analysis}"
+            return combined_output, df
         
         # Event handlers
         analyze_btn.click(
             fn=enhanced_csv_upload,
             inputs=[csv_file],
-            outputs=[status_text, ledger_dataframe, analysis_text]
+            outputs=[combined_status_analysis, ledger_dataframe]
         )
         
         # Auto-analyze when file is uploaded
         csv_file.change(
             fn=enhanced_csv_upload,
             inputs=[csv_file],
-            outputs=[status_text, ledger_dataframe, analysis_text]
+            outputs=[combined_status_analysis, ledger_dataframe]
         )
         
         # Enhanced sample data handler with Modal indexing
@@ -523,23 +475,17 @@ with gr.Blocks(title="SmartLedger - Financial Analysis", theme=gr.themes.Soft())
                 except Exception as e:
                     status += f"\n⚠️ Modal analysis error: {str(e)}"
             
-            return status, df, analysis
+            # Combine status and analysis
+            combined_output = f"{status}\n\n--- FINANCIAL INSIGHTS ---\n{analysis}"
+            return combined_output, df
         
         # Sample data handler
         sample_btn.click(
             fn=enhanced_sample_data,
-            outputs=[status_text, ledger_dataframe, analysis_text]
+            outputs=[combined_status_analysis, ledger_dataframe]
         )
         
-        # LLM Analysis handlers
-        def run_anomaly_detection():
-            """Run anomaly detection and return formatted results"""
-            result = detect_financial_anomalies()
-            if result.get("status") == "success":
-                return f"🚨 ANOMALY DETECTION RESULTS:\n\n{result['anomaly_analysis']}"
-            else:
-                return f"❌ {result.get('error', 'Unknown error')}"
-        
+        # AI Analysis handler
         def run_query(question):
             """Run financial query and return formatted results"""
             if not question.strip():
@@ -550,11 +496,6 @@ with gr.Blocks(title="SmartLedger - Financial Analysis", theme=gr.themes.Soft())
                 return f"💡 QUESTION: {result['question']}\n\n📊 INSIGHTS:\n{result['insights']}"
             else:
                 return f"❌ {result.get('error', 'Unknown error')}"
-        
-        anomaly_btn.click(
-            fn=run_anomaly_detection,
-            outputs=[llm_results]
-        )
         
         query_btn.click(
             fn=run_query,
