@@ -4,6 +4,17 @@ from utils.ledger_analysis import handle_csv_upload, load_sample_data, analyze_l
 from typing import Dict
 import io
 
+# Setup Modal authentication for HuggingFace Spaces
+try:
+    from modal_hf_auth import setup_modal_auth, test_modal_connection
+    setup_modal_auth()
+    modal_available = test_modal_connection()
+except ImportError:
+    print("⚠️ Modal HF auth not available - using fallback")
+    modal_available = False
+
+from llamaindex_core import index_dataframe, query_financial_anomalies, query_financial_insights, get_indexer
+
 def analyze_ledger_from_csv(csv_content: str) -> Dict:
     """
     Analyze a ledger CSV and return comprehensive insights about spending patterns.
@@ -47,6 +58,10 @@ def analyze_ledger_from_csv(csv_content: str) -> Dict:
             categories = df.groupby('category')['amount'].sum().to_dict()
             categories = {k: float(v) for k, v in categories.items()}
         
+        # Index the data with LlamaIndex for deep analysis
+        indexing_success = index_dataframe(df)
+        indexing_status = "Indexed for LLM analysis" if indexing_success else "LLM indexing failed"
+        
         return {
             "status": "success",
             "summary": {
@@ -60,7 +75,9 @@ def analyze_ledger_from_csv(csv_content: str) -> Dict:
             },
             "top_vendors": top_vendors,
             "categories": categories,
-            "analysis_text": analysis_text
+            "analysis_text": analysis_text,
+            "indexing_status": indexing_status,
+            "llm_ready": indexing_success
         }
         
     except Exception as e:
@@ -170,6 +187,72 @@ def get_vendor_analysis(csv_content: str, vendor: str = "") -> Dict:
     except Exception as e:
         return {"error": f"Vendor analysis failed: {str(e)}"}
 
+def detect_financial_anomalies(custom_query: str = "") -> Dict:
+    """
+    Detect anomalies and unusual patterns in the indexed financial data using LLM analysis.
+    
+    Performs intelligent anomaly detection on financial transactions to identify:
+    spending spikes, unusual vendor patterns, seasonal anomalies, and suspicious transactions.
+    
+    Args:
+        custom_query: Optional custom analysis query for specific anomaly detection
+        
+    Returns:
+        Dictionary containing anomaly analysis results and recommendations
+    """
+    try:
+        indexer = get_indexer()
+        if indexer.index is None:
+            return {"error": "No financial data indexed. Please upload and analyze a CSV file first."}
+        
+        # Use custom query if provided, otherwise use default anomaly detection
+        query = custom_query if custom_query.strip() else None
+        analysis = query_financial_anomalies(query)
+        
+        return {
+            "status": "success",
+            "anomaly_analysis": analysis,
+            "analysis_type": "custom" if custom_query.strip() else "comprehensive",
+            "index_stats": indexer.get_index_stats()
+        }
+        
+    except Exception as e:
+        return {"error": f"Anomaly detection failed: {str(e)}"}
+
+def query_financial_data(question: str) -> Dict:
+    """
+    Query the indexed financial data using natural language to get intelligent insights.
+    
+    Ask questions about spending patterns, vendor analysis, budget trends, or any other
+    financial insights. The LLM will analyze the indexed transaction data to provide answers.
+    
+    Args:
+        question: Natural language question about the financial data
+        
+    Returns:
+        Dictionary containing the answer and supporting analysis
+    """
+    try:
+        if not question.strip():
+            return {"error": "Please provide a question about your financial data"}
+        
+        indexer = get_indexer()
+        if indexer.index is None:
+            return {"error": "No financial data indexed. Please upload and analyze a CSV file first."}
+        
+        # Query the indexed data
+        insights = query_financial_insights(question)
+        
+        return {
+            "status": "success", 
+            "question": question,
+            "insights": insights,
+            "index_stats": indexer.get_index_stats()
+        }
+        
+    except Exception as e:
+        return {"error": f"Query failed: {str(e)}"}
+
 with gr.Blocks(title="SmartLedger - Financial Analysis", theme=gr.themes.Soft()) as demo:
         gr.Markdown("# 📊 SmartLedger - Smart Business Accounting")
         gr.Markdown("Upload your accounting ledger CSV file to analyze transactions, spending patterns, and get financial insights.")
@@ -224,6 +307,31 @@ with gr.Blocks(title="SmartLedger - Financial Analysis", theme=gr.themes.Soft())
                     value=""
                 )
         
+        # LLM Analysis Section
+        with gr.Row():
+            gr.Markdown("## 🤖 AI-Powered Analysis")
+        
+        with gr.Row():
+            with gr.Column(scale=1):
+                gr.Markdown("### 🔍 Anomaly Detection")
+                anomaly_btn = gr.Button("Detect Anomalies", variant="primary")
+                
+                gr.Markdown("### 💬 Ask Questions")
+                question_input = gr.Textbox(
+                    label="Ask about your data",
+                    placeholder="e.g., What are my highest spending categories this month?",
+                    lines=2
+                )
+                query_btn = gr.Button("Get Insights", variant="secondary")
+            
+            with gr.Column(scale=2):
+                llm_results = gr.Textbox(
+                    label="AI Analysis Results",
+                    interactive=False,
+                    lines=10,
+                    value="Upload and analyze a CSV file to enable AI-powered insights"
+                )
+        
         with gr.Row():
             with gr.Column():
                 gr.Markdown("### 🎯 Quick Test")
@@ -231,26 +339,101 @@ with gr.Blocks(title="SmartLedger - Financial Analysis", theme=gr.themes.Soft())
                 
             with gr.Column():
                 gr.Markdown("### 🔗 MCP Server")
-                gr.Markdown("**Available MCP Tools:**\n- `analyze_ledger_from_csv`\n- `get_spending_by_category`\n- `get_vendor_analysis`")
+                gr.Markdown("**Available MCP Tools:**\n- `analyze_ledger_from_csv`\n- `get_spending_by_category`\n- `get_vendor_analysis`\n- `detect_financial_anomalies`\n- `query_financial_data`")
+        
+        # Enhanced CSV handler with LlamaIndex integration
+        def enhanced_csv_upload(csv_file):
+            """Enhanced CSV upload handler with LlamaIndex indexing"""
+            # First do the standard analysis
+            status, df, analysis = handle_csv_upload(csv_file)
+            
+            # If successful, also index with LlamaIndex
+            if df is not None:
+                try:
+                    indexing_success = index_dataframe(df)
+                    if indexing_success:
+                        status += "\n✅ Data indexed for AI analysis"
+                    else:
+                        status += "\n⚠️ Basic analysis only (AI indexing failed)"
+                except Exception as e:
+                    status += f"\n⚠️ Basic analysis only (AI indexing error: {str(e)})"
+            
+            return status, df, analysis
         
         # Event handlers
         analyze_btn.click(
-            fn=handle_csv_upload,
+            fn=enhanced_csv_upload,
             inputs=[csv_file],
             outputs=[status_text, ledger_dataframe, analysis_text]
         )
         
         # Auto-analyze when file is uploaded
         csv_file.change(
-            fn=handle_csv_upload,
+            fn=enhanced_csv_upload,
             inputs=[csv_file],
             outputs=[status_text, ledger_dataframe, analysis_text]
         )
         
+        # Enhanced sample data handler with indexing
+        def enhanced_sample_data():
+            """Enhanced sample data loader with LlamaIndex indexing"""
+            status, df, analysis = load_sample_data()
+            
+            # Also index the sample data
+            if df is not None:
+                try:
+                    indexing_success = index_dataframe(df)
+                    if indexing_success:
+                        status += "\n✅ Sample data indexed for AI analysis"
+                    else:
+                        status += "\n⚠️ Basic analysis only (AI indexing failed)"
+                except Exception as e:
+                    status += f"\n⚠️ Basic analysis only (AI indexing error: {str(e)})"
+            
+            return status, df, analysis
+        
         # Sample data handler
         sample_btn.click(
-            fn=load_sample_data,
+            fn=enhanced_sample_data,
             outputs=[status_text, ledger_dataframe, analysis_text]
+        )
+        
+        # LLM Analysis handlers
+        def run_anomaly_detection():
+            """Run anomaly detection and return formatted results"""
+            result = detect_financial_anomalies()
+            if result.get("status") == "success":
+                return f"🚨 ANOMALY DETECTION RESULTS:\n\n{result['anomaly_analysis']}"
+            else:
+                return f"❌ {result.get('error', 'Unknown error')}"
+        
+        def run_query(question):
+            """Run financial query and return formatted results"""
+            if not question.strip():
+                return "Please enter a question about your financial data."
+            
+            result = query_financial_data(question)
+            if result.get("status") == "success":
+                return f"💡 QUESTION: {result['question']}\n\n📊 INSIGHTS:\n{result['insights']}"
+            else:
+                return f"❌ {result.get('error', 'Unknown error')}"
+        
+        anomaly_btn.click(
+            fn=run_anomaly_detection,
+            outputs=[llm_results]
+        )
+        
+        query_btn.click(
+            fn=run_query,
+            inputs=[question_input],
+            outputs=[llm_results]
+        )
+        
+        # Auto-query on Enter
+        question_input.submit(
+            fn=run_query,
+            inputs=[question_input],
+            outputs=[llm_results]
         )
 
 if __name__ == "__main__":
