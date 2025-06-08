@@ -3,45 +3,78 @@ import pandas as pd
 from utils.ledger_analysis import handle_csv_upload, load_sample_data, analyze_ledger_data
 from typing import Dict
 import io
+import uuid
+from datetime import datetime
 
-# Setup Modal authentication for HuggingFace Spaces
+# Setup Modal client
 try:
-    from modal_hf_auth import setup_modal_auth, test_modal_connection
-    setup_modal_auth()
-    modal_available = test_modal_connection()
-except ImportError:
-    print("⚠️ Modal HF auth not available - using fallback")
+    import modal
+    # Try simple functions first, fallback to complex if needed
+    try:
+        modal_app = modal.App.lookup("smartledger-simple", create_if_missing=False)
+        modal_create_index = modal.Function.lookup("smartledger-simple", "create_index")
+        modal_query_data = modal.Function.lookup("smartledger-simple", "query_data") 
+        modal_check_health = modal.Function.lookup("smartledger-simple", "health_check")
+        modal_list_sessions = modal.Function.lookup("smartledger-simple", "list_sessions")
+        print("✅ Using simple Modal functions")
+    except:
+        # Fallback to complex functions
+        modal_app = modal.App.lookup("smartledger", create_if_missing=False)
+        modal_create_index = modal.Function.lookup("smartledger", "create_index")
+        modal_query_data = modal.Function.lookup("smartledger", "query_data") 
+        modal_check_health = modal.Function.lookup("smartledger", "check_health")
+        modal_list_sessions = modal.Function.lookup("smartledger", "list_sessions")
+        print("✅ Using complex Modal functions")
+    
+    modal_available = True
+    print("✅ Modal client connected successfully")
+except Exception as e:
+    print(f"⚠️ Modal not available: {e}")
     modal_available = False
+    modal_create_index = None
+    modal_query_data = None
+    modal_check_health = None
+    modal_list_sessions = None
 
-from llamaindex_core import index_dataframe, query_financial_anomalies, query_financial_insights, get_indexer
+# Global session management
+current_session_id = None
 
 def analyze_ledger_from_csv(csv_content: str) -> Dict:
     """
-    Analyze a ledger CSV and return comprehensive insights about spending patterns.
+    Analyze a ledger CSV using Modal serverless functions for LLM-powered insights.
     
-    This function processes CSV data containing financial transactions and provides
-    detailed analysis including spending summaries, top vendors, and category breakdowns.
+    This function processes CSV data and creates an intelligent financial index using
+    Modal's serverless compute with embedding models and LLMs.
     
     Args:
         csv_content: CSV content as string with required columns: date,vendor,amount
                     Optional columns: category,description
         
     Returns:
-        Dictionary containing analysis results, statistics, and spending insights
+        Dictionary containing analysis results, statistics, and LLM indexing status
     """
+    global current_session_id
+    
     try:
-        # Parse CSV content
+        # Parse CSV content for basic analysis
         df = pd.read_csv(io.StringIO(csv_content))
         
         # Process the data
         df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
         df['date'] = pd.to_datetime(df['date'], errors='coerce')
-        df = df.dropna(subset=['date', 'vendor', 'amount'])
+        
+        # Handle different column names for vendor/description
+        if 'vendor' not in df.columns and 'description' in df.columns:
+            df['vendor'] = df['description']
+        elif 'vendor' not in df.columns and 'description' not in df.columns:
+            df['vendor'] = 'Unknown'
+            
+        df = df.dropna(subset=['date', 'amount'])
         
         if df.empty:
             return {"error": "No valid transactions found"}
         
-        # Generate analysis
+        # Generate basic analysis
         analysis_text = analyze_ledger_data(df)
         
         # Create structured response
@@ -58,9 +91,37 @@ def analyze_ledger_from_csv(csv_content: str) -> Dict:
             categories = df.groupby('category')['amount'].sum().to_dict()
             categories = {k: float(v) for k, v in categories.items()}
         
-        # Index the data with LlamaIndex for deep analysis
-        indexing_success = index_dataframe(df)
-        indexing_status = "Indexed for LLM analysis" if indexing_success else "LLM indexing failed"
+        # Create Modal index for LLM analysis
+        modal_indexing_status = "Modal not available"
+        llm_ready = False
+        
+        if modal_available and modal_create_index:
+            try:
+                # Generate unique session ID
+                current_session_id = f"session_{uuid.uuid4().hex[:8]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                
+                # Standardize column names for Modal
+                modal_df = df.copy()
+                if 'vendor' in modal_df.columns:
+                    modal_df['description'] = modal_df['vendor']
+                if 'category' not in modal_df.columns:
+                    modal_df['category'] = 'Uncategorized'
+                
+                # Convert to CSV for Modal
+                modal_csv = modal_df.to_csv(index=False)
+                
+                # Call Modal function to create index
+                print(f"🚀 Creating Modal index for session: {current_session_id}")
+                modal_result = modal_create_index.remote(modal_csv, current_session_id)
+                
+                if modal_result.get("status") == "success":
+                    modal_indexing_status = f"✅ Modal LLM index created (Session: {current_session_id[:12]}...)"
+                    llm_ready = True
+                else:
+                    modal_indexing_status = f"❌ Modal indexing failed: {modal_result.get('error', 'Unknown error')}"
+                    
+            except Exception as e:
+                modal_indexing_status = f"❌ Modal indexing error: {str(e)}"
         
         return {
             "status": "success",
@@ -76,8 +137,10 @@ def analyze_ledger_from_csv(csv_content: str) -> Dict:
             "top_vendors": top_vendors,
             "categories": categories,
             "analysis_text": analysis_text,
-            "indexing_status": indexing_status,
-            "llm_ready": indexing_success
+            "indexing_status": modal_indexing_status,
+            "llm_ready": llm_ready,
+            "session_id": current_session_id,
+            "modal_available": modal_available
         }
         
     except Exception as e:
@@ -189,10 +252,10 @@ def get_vendor_analysis(csv_content: str, vendor: str = "") -> Dict:
 
 def detect_financial_anomalies(custom_query: str = "") -> Dict:
     """
-    Detect anomalies and unusual patterns in the indexed financial data using LLM analysis.
+    Detect anomalies using Modal's LLM-powered analysis.
     
-    Performs intelligent anomaly detection on financial transactions to identify:
-    spending spikes, unusual vendor patterns, seasonal anomalies, and suspicious transactions.
+    Performs intelligent anomaly detection on financial transactions using Modal's
+    serverless LLM functions to identify spending spikes, unusual patterns, and suspicious transactions.
     
     Args:
         custom_query: Optional custom analysis query for specific anomaly detection
@@ -200,31 +263,48 @@ def detect_financial_anomalies(custom_query: str = "") -> Dict:
     Returns:
         Dictionary containing anomaly analysis results and recommendations
     """
+    global current_session_id
+    
     try:
-        indexer = get_indexer()
-        if indexer.index is None:
+        if not current_session_id:
             return {"error": "No financial data indexed. Please upload and analyze a CSV file first."}
         
-        # Use custom query if provided, otherwise use default anomaly detection
-        query = custom_query if custom_query.strip() else None
-        analysis = query_financial_anomalies(query)
+        if not modal_available or not modal_query_data:
+            return {"error": "Modal LLM functions not available. Using basic analysis."}
         
-        return {
-            "status": "success",
-            "anomaly_analysis": analysis,
-            "analysis_type": "custom" if custom_query.strip() else "comprehensive",
-            "index_stats": indexer.get_index_stats()
-        }
+        # Use custom query if provided, otherwise default anomaly detection query
+        if custom_query.strip():
+            query = custom_query
+            analysis_type = "custom"
+        else:
+            query = "Detect any unusual spending patterns, anomalies, or suspicious transactions in this financial data. Look for spending spikes, unusual vendors, or irregular amounts."
+            analysis_type = "comprehensive"
+        
+        # Call Modal function for anomaly detection
+        print(f"🔍 Running anomaly detection for session: {current_session_id}")
+        modal_result = modal_query_data.remote(query, current_session_id)
+        
+        if modal_result.get("status") == "success":
+            return {
+                "status": "success",
+                "anomaly_analysis": modal_result.get("llm_analysis", "No analysis available"),
+                "analysis_type": analysis_type,
+                "matching_transactions": modal_result.get("matching_transactions", 0),
+                "total_amount": modal_result.get("total_amount", 0),
+                "session_id": current_session_id
+            }
+        else:
+            return {"error": f"Modal anomaly detection failed: {modal_result.get('error', 'Unknown error')}"}
         
     except Exception as e:
         return {"error": f"Anomaly detection failed: {str(e)}"}
 
 def query_financial_data(question: str) -> Dict:
     """
-    Query the indexed financial data using natural language to get intelligent insights.
+    Query financial data using Modal's LLM-powered analysis.
     
-    Ask questions about spending patterns, vendor analysis, budget trends, or any other
-    financial insights. The LLM will analyze the indexed transaction data to provide answers.
+    Ask natural language questions about spending patterns, vendor analysis, budget trends,
+    or any other financial insights. Modal's serverless LLM will analyze the data to provide answers.
     
     Args:
         question: Natural language question about the financial data
@@ -232,23 +312,45 @@ def query_financial_data(question: str) -> Dict:
     Returns:
         Dictionary containing the answer and supporting analysis
     """
+    global current_session_id
+    
     try:
         if not question.strip():
             return {"error": "Please provide a question about your financial data"}
         
-        indexer = get_indexer()
-        if indexer.index is None:
+        if not current_session_id:
             return {"error": "No financial data indexed. Please upload and analyze a CSV file first."}
+            
+        if not modal_available or not modal_query_data:
+            return {"error": "Modal LLM functions not available. Please ensure Modal is deployed."}
         
-        # Query the indexed data
-        insights = query_financial_insights(question)
+        # Debug: Check available sessions
+        if modal_list_sessions:
+            try:
+                sessions_info = modal_list_sessions.remote()
+                print(f"📝 Available sessions: {sessions_info}")
+            except Exception as e:
+                print(f"⚠️ Could not list sessions: {e}")
         
-        return {
-            "status": "success", 
-            "question": question,
-            "insights": insights,
-            "index_stats": indexer.get_index_stats()
-        }
+        # Call Modal function for intelligent query processing
+        print(f"💬 Processing query for session: {current_session_id}")
+        print(f"Question: {question}")
+        
+        modal_result = modal_query_data.remote(question, current_session_id)
+        
+        if modal_result.get("status") == "success":
+            return {
+                "status": "success", 
+                "question": question,
+                "insights": modal_result.get("llm_analysis", "No insights available"),
+                "matching_transactions": modal_result.get("matching_transactions", 0),
+                "total_amount": modal_result.get("total_amount", 0),
+                "results": modal_result.get("results", []),
+                "session_id": current_session_id,
+                "processed_at": modal_result.get("processed_at")
+            }
+        else:
+            return {"error": f"Modal query failed: {modal_result.get('error', 'Unknown error')}"}
         
     except Exception as e:
         return {"error": f"Query failed: {str(e)}"}
@@ -338,25 +440,43 @@ with gr.Blocks(title="SmartLedger - Financial Analysis", theme=gr.themes.Soft())
                 sample_btn = gr.Button("Load Sample Data", variant="secondary")
                 
             with gr.Column():
-                gr.Markdown("### 🔗 MCP Server")
+                gr.Markdown("### 🔗 Modal LLM Integration")
+                if modal_available:
+                    gr.Markdown("✅ **Modal Status:** Connected\n🚀 **AI Models:** Embedding + LLM ready\n📡 **Functions:** `create_index`, `query_data`, `check_health`")
+                else:
+                    gr.Markdown("❌ **Modal Status:** Not available\n⚠️ **Fallback:** Basic analysis only")
+                    
                 gr.Markdown("**Available MCP Tools:**\n- `analyze_ledger_from_csv`\n- `get_spending_by_category`\n- `get_vendor_analysis`\n- `detect_financial_anomalies`\n- `query_financial_data`")
         
-        # Enhanced CSV handler with LlamaIndex integration
+        # Enhanced CSV handler with Modal integration
         def enhanced_csv_upload(csv_file):
-            """Enhanced CSV upload handler with LlamaIndex indexing"""
+            """Enhanced CSV upload handler with Modal LLM indexing"""
             # First do the standard analysis
             status, df, analysis = handle_csv_upload(csv_file)
             
-            # If successful, also index with LlamaIndex
+            # If successful, also index with Modal
             if df is not None:
                 try:
-                    indexing_success = index_dataframe(df)
-                    if indexing_success:
-                        status += "\n✅ Data indexed for AI analysis"
+                    # Convert dataframe to CSV for Modal analysis
+                    csv_content = df.to_csv(index=False)
+                    modal_result = analyze_ledger_from_csv(csv_content)
+                    
+                    if modal_result.get("status") == "success":
+                        modal_status = modal_result.get("indexing_status", "Unknown status")
+                        status += f"\n{modal_status}"
+                        
+                        # Add Modal session info
+                        if modal_result.get("session_id"):
+                            status += f"\nSession ID: {modal_result['session_id'][:20]}..."
+                            
+                        # Enhance analysis with Modal insights
+                        if modal_result.get("llm_ready"):
+                            analysis += f"\n\n🤖 AI Analysis Ready:\n• {modal_result['summary']['total_transactions']} transactions indexed\n• Modal LLM functions available for intelligent queries\n• Ask questions in the AI Analysis section below"
                     else:
-                        status += "\n⚠️ Basic analysis only (AI indexing failed)"
+                        status += f"\n⚠️ Modal analysis failed: {modal_result.get('error', 'Unknown error')}"
+                        
                 except Exception as e:
-                    status += f"\n⚠️ Basic analysis only (AI indexing error: {str(e)})"
+                    status += f"\n⚠️ Modal analysis error: {str(e)}"
             
             return status, df, analysis
         
@@ -374,21 +494,34 @@ with gr.Blocks(title="SmartLedger - Financial Analysis", theme=gr.themes.Soft())
             outputs=[status_text, ledger_dataframe, analysis_text]
         )
         
-        # Enhanced sample data handler with indexing
+        # Enhanced sample data handler with Modal indexing
         def enhanced_sample_data():
-            """Enhanced sample data loader with LlamaIndex indexing"""
+            """Enhanced sample data loader with Modal LLM indexing"""
             status, df, analysis = load_sample_data()
             
-            # Also index the sample data
+            # Also index the sample data with Modal
             if df is not None:
                 try:
-                    indexing_success = index_dataframe(df)
-                    if indexing_success:
-                        status += "\n✅ Sample data indexed for AI analysis"
+                    # Convert dataframe to CSV for Modal analysis
+                    csv_content = df.to_csv(index=False)
+                    modal_result = analyze_ledger_from_csv(csv_content)
+                    
+                    if modal_result.get("status") == "success":
+                        modal_status = modal_result.get("indexing_status", "Unknown status")
+                        status += f"\n{modal_status}"
+                        
+                        # Add Modal session info
+                        if modal_result.get("session_id"):
+                            status += f"\nSession ID: {modal_result['session_id'][:20]}..."
+                            
+                        # Enhance analysis with Modal insights
+                        if modal_result.get("llm_ready"):
+                            analysis += f"\n\n🤖 AI Analysis Ready:\n• {modal_result['summary']['total_transactions']} transactions indexed\n• Modal LLM functions available for intelligent queries\n• Try asking: 'What are my highest spending categories?'"
                     else:
-                        status += "\n⚠️ Basic analysis only (AI indexing failed)"
+                        status += f"\n⚠️ Modal analysis failed: {modal_result.get('error', 'Unknown error')}"
+                        
                 except Exception as e:
-                    status += f"\n⚠️ Basic analysis only (AI indexing error: {str(e)})"
+                    status += f"\n⚠️ Modal analysis error: {str(e)}"
             
             return status, df, analysis
         

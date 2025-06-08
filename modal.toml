@@ -1,0 +1,10 @@
+[project]
+name = "smartledger"
+environment = "main"
+
+[build]
+python_version = "3.11"
+
+[secrets]
+# Add environment variables for API keys if needed
+# OPENAI_API_KEY = "your-openai-key"  # Optional for future LLM integration
