@@ -1,0 +1,31 @@
+date,vendor,amount,category,description
+2024-01-15,Coffee Shop Downtown,4.50,Meals & Entertainment,Morning coffee and pastry
+2024-01-16,Shell Gas Station,45.00,Vehicle Expenses,Regular gasoline fill-up
+2024-01-17,Office Depot,23.99,Office Supplies,Printer paper and pens
+2024-01-18,Uber Technologies,18.75,Travel,Ride to client meeting
+2024-01-19,Microsoft Corporation,99.99,Software & Technology,Office 365 annual subscription
+2024-01-22,Starbucks Coffee,6.85,Meals & Entertainment,Afternoon coffee meeting
+2024-01-23,Amazon.com,156.48,Office Supplies,Laptop stand and accessories
+2024-01-24,Chevron Gas Station,52.30,Vehicle Expenses,Premium gasoline
+2024-01-25,FedEx Office,12.50,Professional Services,Document printing and shipping
+2024-01-26,Home Depot,89.99,Office Supplies,Shelving for office organization
+2024-01-29,McDonald's Restaurant,9.99,Meals & Entertainment,Quick lunch during travel
+2024-01-30,Adobe Inc,20.99,Software & Technology,Creative Cloud monthly subscription
+2024-02-01,Whole Foods Market,45.67,Meals & Entertainment,Team lunch groceries
+2024-02-02,AT&T Mobility,65.00,Utilities,Monthly phone service
+2024-02-05,Hotel Marriott,189.00,Travel,Business trip accommodation
+2024-02-06,Enterprise Rent-A-Car,125.50,Travel,Car rental for business trip
+2024-02-07,Restaurant Olive Garden,78.90,Meals & Entertainment,Client dinner
+2024-02-08,Best Buy,299.99,Office Supplies,Computer monitor
+2024-02-09,Zoom Video Communications,14.99,Software & Technology,Monthly video conferencing
+2024-02-12,Chipotle Mexican Grill,12.45,Meals & Entertainment,Working lunch
+2024-02-13,Verizon Wireless,85.00,Utilities,Internet service
+2024-02-14,Costco Wholesale,234.78,Office Supplies,Bulk office supplies
+2024-02-15,Delta Air Lines,456.00,Travel,Flight to conference
+2024-02-16,Hilton Hotels,245.00,Travel,Conference hotel stay
+2024-02-19,Subway Restaurant,8.99,Meals & Entertainment,Quick dinner
+2024-02-20,GitHub Inc,7.00,Software & Technology,Private repository hosting
+2024-02-21,LinkedIn Corporation,59.99,Professional Services,Premium subscription
+2024-02-22,Dropbox Inc,11.99,Software & Technology,Cloud storage upgrade
+2024-02-23,Panera Bread,15.50,Meals & Entertainment,Coffee shop meeting
+2024-02-26,Tesla Supercharger,28.75,Vehicle Expenses,Electric vehicle charging

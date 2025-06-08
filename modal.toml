@@ -1,0 +1,38 @@
+[modal]
+environment = "main"
+
+[build]
+python_version = "3.11"
+
+[secrets]
+openai-secret = "OPENAI_API_KEY"
+
+[gpu]
+# GPU configuration for vision models
+default = "T4"
+vision_processing = "A10G"
+
+[compute]
+# CPU configuration
+default_cpu = 2.0
+default_memory = 4096
+
+[timeouts]
+# Function timeouts
+default = 300  # 5 minutes
+document_processing = 600  # 10 minutes
+batch_processing = 1200  # 20 minutes
+
+[limits]
+# Resource limits
+max_concurrent_functions = 10
+max_file_size_mb = 50
+
+[storage]
+# Volume configuration for large files (if needed)
+# documents_volume = "smartledger-docs"
+
+[development]
+# Development settings
+hot_reload = true
+debug = true
