@@ -9,25 +9,13 @@ from datetime import datetime
 # Setup Modal client
 try:
     import modal
-    # Try simple functions first, fallback to complex if needed
-    try:
-        modal_app = modal.App.lookup("smartledger-simple", create_if_missing=False)
-        modal_create_index = modal.Function.lookup("smartledger-simple", "create_index")
-        modal_query_data = modal.Function.lookup("smartledger-simple", "query_data") 
-        modal_check_health = modal.Function.lookup("smartledger-simple", "health_check")
-        modal_list_sessions = modal.Function.lookup("smartledger-simple", "list_sessions")
-        print("✅ Using simple Modal functions")
-    except:
-        # Fallback to complex functions
-        modal_app = modal.App.lookup("smartledger", create_if_missing=False)
-        modal_create_index = modal.Function.lookup("smartledger", "create_index")
-        modal_query_data = modal.Function.lookup("smartledger", "query_data") 
-        modal_check_health = modal.Function.lookup("smartledger", "check_health")
-        modal_list_sessions = modal.Function.lookup("smartledger", "list_sessions")
-        print("✅ Using complex Modal functions")
-    
+    modal_app = modal.App.lookup("smartledger", create_if_missing=False)
+    modal_create_index = modal.Function.lookup("smartledger", "create_index")
+    modal_query_data = modal.Function.lookup("smartledger", "query_data") 
+    modal_check_health = modal.Function.lookup("smartledger", "check_health")
+    modal_list_sessions = modal.Function.lookup("smartledger", "list_sessions")
     modal_available = True
-    print("✅ Modal client connected successfully")
+    print("✅ Using Modal functions with AI models")
 except Exception as e:
     print(f"⚠️ Modal not available: {e}")
     modal_available = False

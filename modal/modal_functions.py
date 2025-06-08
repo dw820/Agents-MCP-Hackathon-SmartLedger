@@ -68,6 +68,11 @@ class SmartLedgerAnalyzer:
         
         print("🎉 Container ready for requests!")
         return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Clean up when container shuts down"""
+        print("🔄 Container shutting down...")
+        return False
 
     @modal.method()
     def create_financial_index(self, csv_data: str, session_id: str) -> Dict[str, Any]:
@@ -216,12 +221,12 @@ class SmartLedgerAnalyzer:
 # Create analyzer instance
 analyzer = SmartLedgerAnalyzer()
 
-# Public endpoints that UI calls - these handle session storage directly
+# Public endpoints that UI calls - these call analyzer methods remotely
 @app.function(image=model_image, timeout=600)
 def create_index(csv_data: str, session_id: str):
     """UI calls this - automatically starts container if needed"""
     try:
-        # Call the analyzer to process the data
+        # Call the analyzer method remotely (this handles the context properly)
         result = analyzer.create_financial_index.remote(csv_data, session_id)
         
         # If successful, also store a simple session marker
@@ -250,7 +255,7 @@ def query_data(query: str, session_id: str):
                 "available_sessions": list(session_storage.keys())
             }
         
-        # Call the analyzer
+        # Call the analyzer method remotely
         result = analyzer.query_financial_data.remote(query, session_id)
         return result
     except Exception as e:
