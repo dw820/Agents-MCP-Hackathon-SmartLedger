@@ -484,50 +484,50 @@ with gr.Blocks(title="SmartLedger - Transaction Reconciliation", theme=gr.themes
                     value=None
                 )
         
-        # AI Analysis Section
-        gr.Markdown("## 🤖 AI-Powered Analysis")
+#         # AI Analysis Section
+#         gr.Markdown("## 🤖 AI-Powered Analysis")
         
-        # Questions Section
-        gr.Markdown("### 💬 Ask Questions About Your Data")
-        question_input = gr.Textbox(
-            label="Natural Language Query",
-            placeholder="e.g., What are my highest spending categories? Show me restaurant transactions.",
-            lines=2
-        )
-        query_btn = gr.Button("Get AI Insights", variant="primary", size="lg")
+#         # Questions Section
+#         gr.Markdown("### 💬 Ask Questions About Your Data")
+#         question_input = gr.Textbox(
+#             label="Natural Language Query",
+#             placeholder="e.g., What are my highest spending categories? Show me restaurant transactions.",
+#             lines=2
+#         )
+#         query_btn = gr.Button("Get AI Insights", variant="primary", size="lg")
         
-        # AI Results
-        llm_results = gr.Textbox(
-            label="AI Analysis Results",
-            interactive=False,
-            lines=12,
-            value="Upload and analyze a CSV file to enable AI-powered insights"
-        )
+#         # AI Results
+#         llm_results = gr.Textbox(
+#             label="AI Analysis Results",
+#             interactive=False,
+#             lines=12,
+#             value="Upload and analyze a CSV file to enable AI-powered insights"
+#         )
         
-        # Quick Test Section
-        gr.Markdown("## 🎯 Quick Test")
-        sample_btn = gr.Button("Load Sample Data", variant="primary", size="lg")
+#         # Quick Test Section
+#         gr.Markdown("## 🎯 Quick Test")
+#         sample_btn = gr.Button("Load Sample Data", variant="primary", size="lg")
         
-        # System Status Section  
-        gr.Markdown("## 🔗 System Status & Integration")
+#         # System Status Section  
+#         gr.Markdown("## 🔗 System Status & Integration")
         
-        # Modal Status
-        if modal_available:
-            gr.Markdown("✅ **Modal AI Status:** Connected and Ready\n🚀 **Features:** Smart transaction analysis, natural language queries\n📡 **Functions:** Session management, keyword search, basic insights")
-        else:
-            gr.Markdown("❌ **Modal AI Status:** Not available\n⚠️ **Mode:** Basic analysis only (no AI features)")
+#         # Modal Status
+#         if modal_available:
+#             gr.Markdown("✅ **Modal AI Status:** Connected and Ready\n🚀 **Features:** Smart transaction analysis, natural language queries\n📡 **Functions:** Session management, keyword search, basic insights")
+#         else:
+#             gr.Markdown("❌ **Modal AI Status:** Not available\n⚠️ **Mode:** Basic analysis only (no AI features)")
             
-        # MCP Tools Info
-        with gr.Accordion("🛠️ Available MCP Tools", open=False):
-            gr.Markdown("""
-**Core Analysis Tools:**
-- `analyze_ledger_from_csv` - Process and index financial data
-- `get_spending_by_category` - Category-based spending breakdown  
-- `get_vendor_analysis` - Vendor spending patterns
-- `query_financial_data` - Natural language financial queries
+#         # MCP Tools Info
+#         with gr.Accordion("🛠️ Available MCP Tools", open=False):
+#             gr.Markdown("""
+# **Core Analysis Tools:**
+# - `analyze_ledger_from_csv` - Process and index financial data
+# - `get_spending_by_category` - Category-based spending breakdown  
+# - `get_vendor_analysis` - Vendor spending patterns
+# - `query_financial_data` - Natural language financial queries
 
-**Integration:** These tools are available for external AI agents via MCP protocol.
-            """)
+# **Integration:** These tools are available for external AI agents via MCP protocol.
+#             """)
         
         # Enhanced dual file processing handler
         def process_dual_upload(image_file, csv_file):
@@ -654,120 +654,120 @@ Session ID: {result['session_id'][:20]}..."""
                     medium_confidence_dataframe, low_confidence_dataframe, unmatched_dataframe]
         )
         
-        # Quick Test Section with sample data
-        gr.Markdown("## 🎯 Quick Test")
-        sample_btn = gr.Button("📄 Load Sample Data (CSV + Mock Image)", variant="secondary", size="lg")
+#         # Quick Test Section with sample data
+#         gr.Markdown("## 🎯 Quick Test")
+#         sample_btn = gr.Button("📄 Load Sample Data (CSV + Mock Image)", variant="secondary", size="lg")
         
-        def load_sample_for_reconciliation():
-            """Load sample data and create a mock reconciliation scenario"""
-            try:
+#         def load_sample_for_reconciliation():
+#             """Load sample data and create a mock reconciliation scenario"""
+#             try:
                 
-                # Mock reconciliation result for demonstration
-                status = """✅ Sample Data Loaded!
+#                 # Mock reconciliation result for demonstration
+#                 status = """✅ Sample Data Loaded!
 
-📊 **Processing Summary:**
-• CSV Transactions: 5
-• Image Transactions: 3 (simulated)
-• Total Matches: 2 (66.7% match rate)
+# 📊 **Processing Summary:**
+# • CSV Transactions: 5
+# • Image Transactions: 3 (simulated)
+# • Total Matches: 2 (66.7% match rate)
 
-🎯 **Confidence Breakdown:**
-• High Confidence (≥85%): 1 transactions
-• Medium Confidence (65-84%): 1 transactions
-• Low Confidence (<65%): 0 transactions
+# 🎯 **Confidence Breakdown:**
+# • High Confidence (≥85%): 1 transactions
+# • Medium Confidence (65-84%): 1 transactions
+# • Low Confidence (<65%): 0 transactions
 
-💰 **Financial Summary:**
-• Total Image Amount: $68.49
-• Total Matched Amount: $49.50 (72.3%)
-• Unmatched Image Transactions: 1
+# 💰 **Financial Summary:**
+# • Total Image Amount: $68.49
+# • Total Matched Amount: $49.50 (72.3%)
+# • Unmatched Image Transactions: 1
 
-🧪 This is sample data for demonstration purposes."""
+# 🧪 This is sample data for demonstration purposes."""
 
-                # Create sample summary
-                summary_data = pd.DataFrame([
-                    {"Metric": "CSV Transactions", "Value": 5},
-                    {"Metric": "Image Transactions", "Value": 3},
-                    {"Metric": "Total Matches", "Value": "2 (66.7%)"},
-                    {"Metric": "High Confidence Matches", "Value": 1},
-                    {"Metric": "Medium Confidence Matches", "Value": 1},
-                    {"Metric": "Low Confidence Matches", "Value": 0},
-                    {"Metric": "Match Rate", "Value": "66.7%"},
-                    {"Metric": "Reconciliation %", "Value": "72.3%"}
-                ])
+#                 # Create sample summary
+#                 summary_data = pd.DataFrame([
+#                     {"Metric": "CSV Transactions", "Value": 5},
+#                     {"Metric": "Image Transactions", "Value": 3},
+#                     {"Metric": "Total Matches", "Value": "2 (66.7%)"},
+#                     {"Metric": "High Confidence Matches", "Value": 1},
+#                     {"Metric": "Medium Confidence Matches", "Value": 1},
+#                     {"Metric": "Low Confidence Matches", "Value": 0},
+#                     {"Metric": "Match Rate", "Value": "66.7%"},
+#                     {"Metric": "Reconciliation %", "Value": "72.3%"}
+#                 ])
                 
-                # Sample high confidence match
-                high_conf = pd.DataFrame([{
-                    "Confidence": "92.5%",
-                    "CSV Date": "2024-01-15",
-                    "CSV Vendor": "Coffee Shop Downtown",
-                    "CSV Amount": "$4.50",
-                    "Image Date": "2024-01-15", 
-                    "Image Vendor": "Coffee Shop",
-                    "Image Amount": "$4.50",
-                    "Match Reasons": "Exact amount match, Exact date match, Partial vendor match",
-                    "Discrepancies": ""
-                }])
+#                 # Sample high confidence match
+#                 high_conf = pd.DataFrame([{
+#                     "Confidence": "92.5%",
+#                     "CSV Date": "2024-01-15",
+#                     "CSV Vendor": "Coffee Shop Downtown",
+#                     "CSV Amount": "$4.50",
+#                     "Image Date": "2024-01-15", 
+#                     "Image Vendor": "Coffee Shop",
+#                     "Image Amount": "$4.50",
+#                     "Match Reasons": "Exact amount match, Exact date match, Partial vendor match",
+#                     "Discrepancies": ""
+#                 }])
                 
-                # Sample medium confidence match
-                med_conf = pd.DataFrame([{
-                    "Confidence": "78.0%",
-                    "CSV Date": "2024-01-16",
-                    "CSV Vendor": "Shell Gas Station", 
-                    "CSV Amount": "$45.00",
-                    "Image Date": "2024-01-16",
-                    "Image Vendor": "Shell",
-                    "Image Amount": "$45.00",
-                    "Match Reasons": "Exact amount match, Exact date match, Vendor keyword match",
-                    "Discrepancies": "Vendor difference: SHELL GAS STATION vs SHELL"
-                }])
+#                 # Sample medium confidence match
+#                 med_conf = pd.DataFrame([{
+#                     "Confidence": "78.0%",
+#                     "CSV Date": "2024-01-16",
+#                     "CSV Vendor": "Shell Gas Station", 
+#                     "CSV Amount": "$45.00",
+#                     "Image Date": "2024-01-16",
+#                     "Image Vendor": "Shell",
+#                     "Image Amount": "$45.00",
+#                     "Match Reasons": "Exact amount match, Exact date match, Vendor keyword match",
+#                     "Discrepancies": "Vendor difference: SHELL GAS STATION vs SHELL"
+#                 }])
                 
-                # Empty low confidence 
-                low_conf = pd.DataFrame({"Message": ["No matches in this category"]})
+#                 # Empty low confidence 
+#                 low_conf = pd.DataFrame({"Message": ["No matches in this category"]})
                 
-                # Sample unmatched
-                unmatched = pd.DataFrame([
-                    {"Source": "Image (Unmatched)", "Date": "2024-01-17", "Vendor": "Amazon", "Amount": "$18.99", "Description": "Online purchase"},
-                    {"Source": "CSV (Unmatched)", "Date": "2024-01-17", "Vendor": "Office Depot", "Amount": "$23.99", "Description": "Printer paper"},
-                    {"Source": "CSV (Unmatched)", "Date": "2024-01-18", "Vendor": "Uber Technologies", "Amount": "$18.75", "Description": "Ride to meeting"},
-                    {"Source": "CSV (Unmatched)", "Date": "2024-01-19", "Vendor": "Microsoft Corporation", "Amount": "$99.99", "Description": "Office 365"}
-                ])
+#                 # Sample unmatched
+#                 unmatched = pd.DataFrame([
+#                     {"Source": "Image (Unmatched)", "Date": "2024-01-17", "Vendor": "Amazon", "Amount": "$18.99", "Description": "Online purchase"},
+#                     {"Source": "CSV (Unmatched)", "Date": "2024-01-17", "Vendor": "Office Depot", "Amount": "$23.99", "Description": "Printer paper"},
+#                     {"Source": "CSV (Unmatched)", "Date": "2024-01-18", "Vendor": "Uber Technologies", "Amount": "$18.75", "Description": "Ride to meeting"},
+#                     {"Source": "CSV (Unmatched)", "Date": "2024-01-19", "Vendor": "Microsoft Corporation", "Amount": "$99.99", "Description": "Office 365"}
+#                 ])
                 
-                return status, summary_data, high_conf, med_conf, low_conf, unmatched
+#                 return status, summary_data, high_conf, med_conf, low_conf, unmatched
                 
-            except Exception as e:
-                error_msg = f"❌ Error loading sample data: {str(e)}"
-                empty_df = pd.DataFrame({"Error": [str(e)]})
-                return error_msg, empty_df, empty_df, empty_df, empty_df, empty_df
+#             except Exception as e:
+#                 error_msg = f"❌ Error loading sample data: {str(e)}"
+#                 empty_df = pd.DataFrame({"Error": [str(e)]})
+#                 return error_msg, empty_df, empty_df, empty_df, empty_df, empty_df
         
-        sample_btn.click(
-            fn=load_sample_for_reconciliation,
-            outputs=[reconciliation_status, summary_dataframe, high_confidence_dataframe,
-                    medium_confidence_dataframe, low_confidence_dataframe, unmatched_dataframe]
-        )
+#         sample_btn.click(
+#             fn=load_sample_for_reconciliation,
+#             outputs=[reconciliation_status, summary_dataframe, high_confidence_dataframe,
+#                     medium_confidence_dataframe, low_confidence_dataframe, unmatched_dataframe]
+#         )
         
-        # AI Analysis handler
-        def run_query(question):
-            """Run financial query and return formatted results"""
-            if not question.strip():
-                return "Please enter a question about your financial data."
+#         # AI Analysis handler
+#         def run_query(question):
+#             """Run financial query and return formatted results"""
+#             if not question.strip():
+#                 return "Please enter a question about your financial data."
             
-            result = query_financial_data(question)
-            if result.get("status") == "success":
-                return f"💡 QUESTION: {result['question']}\n\n📊 INSIGHTS:\n{result['insights']}"
-            else:
-                return f"❌ {result.get('error', 'Unknown error')}"
+#             result = query_financial_data(question)
+#             if result.get("status") == "success":
+#                 return f"💡 QUESTION: {result['question']}\n\n📊 INSIGHTS:\n{result['insights']}"
+#             else:
+#                 return f"❌ {result.get('error', 'Unknown error')}"
         
-        query_btn.click(
-            fn=run_query,
-            inputs=[question_input],
-            outputs=[llm_results]
-        )
+#         query_btn.click(
+#             fn=run_query,
+#             inputs=[question_input],
+#             outputs=[llm_results]
+#         )
         
-        # Auto-query on Enter
-        question_input.submit(
-            fn=run_query,
-            inputs=[question_input],
-            outputs=[llm_results]
-        )
+#         # Auto-query on Enter
+#         question_input.submit(
+#             fn=run_query,
+#             inputs=[question_input],
+#             outputs=[llm_results]
+#         )
 
 if __name__ == "__main__":
     demo.launch(
