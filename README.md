@@ -19,6 +19,10 @@ Check out the configuration reference at https://huggingface.co/docs/hub/spaces-
 
 [![Sync to HuggingFace Space](https://github.com/dw820/Agents-MCP-Hackathon-SmartLedger/actions/workflows/main.yml/badge.svg)](https://huggingface.co/spaces/Agents-MCP-Hackathon/SmartLedger)
 
+## Demo Video
+[link](https://x.com/WeiTu_/status/1931950511332417906)
+
+
 ## Project Context
 
 SmartLedger is an intelligent financial reconciliation system designed to solve the complex challenges faced by small businesses in managing their accounting processes. The project was developed as part of the Agents-MCP-Hackathon, showcasing advanced AI capabilities in financial document processing and transaction matching.
