@@ -34,6 +34,7 @@ Small businesses often struggle with time-consuming manual reconciliation proces
 - **Fragmented Systems**: Multiple tools and spreadsheets that don't communicate effectively
 
 SmartLedger addresses these pain points by providing an AI-powered solution that:
+
 - Automatically extracts transaction data from images using computer vision
 - Intelligently matches transactions across different financial documents
 - Provides confidence scoring for automated reconciliation decisions
@@ -41,3 +42,9 @@ SmartLedger addresses these pain points by providing an AI-powered solution that
 - Reduces manual effort while improving accuracy and compliance
 
 The system is particularly valuable for small business owners, bookkeepers, and accountants who need efficient, reliable tools for financial reconciliation without the complexity or cost of enterprise-level solutions.
+
+## Tech Stack
+
+- **Gradio**: Frontend UI and MCP server for interactive web interface and programmatic access
+- **Modal**: Serverless compute platform for scalable document processing functions
+- **Hyperbolic**: Model inference platform powering Qwen2.5-VL-7B-Instruct model for AI-powered document parsing and transaction extraction from images
