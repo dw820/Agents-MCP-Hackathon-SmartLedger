@@ -382,7 +382,7 @@ def query_financial_data(question: str) -> Dict:
         return {"error": f"Query failed: {str(e)}"}
 
 with gr.Blocks(title="SmartLedger - Transaction Reconciliation", theme=gr.themes.Soft()) as demo:
-        gr.Markdown("# 📊 SmartLedger - Smart Business Accounting & Reconciliation")
+        gr.Markdown("# 📊 SmartLedger - Smart Business Accounting Reconciliation")
         gr.Markdown("Upload both your CSV ledger and bank statement/receipt image to automatically reconcile transactions with AI-powered confidence scoring.")
         
         # Dual Upload Section
