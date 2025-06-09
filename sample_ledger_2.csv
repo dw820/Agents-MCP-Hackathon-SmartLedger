@@ -1,0 +1,39 @@
+date,vendor,amount,category,description
+2024-01-22,Amazon Web Services,45.00,Technology,Cloud hosting services
+2024-01-23,Chipotle Mexican Grill,12.85,Meals & Entertainment,Team lunch
+2024-01-24,FedEx Office,18.75,Shipping,Document delivery to client
+2024-01-25,Home Depot,89.50,Office Supplies,Office furniture and supplies
+2024-01-26,Verizon Wireless,85.00,Communications,Monthly phone service
+2024-01-29,Adobe Systems,52.99,Software,Creative Cloud subscription
+2024-01-30,Panera Bread,8.50,Meals & Entertainment,Client breakfast meeting
+2024-02-01,BP Gas Station,42.00,Vehicle Expenses,Fuel for business trip
+2024-02-02,Hilton Hotels,185.00,Travel,Overnight business travel
+2024-02-05,Staples,65.40,Office Supplies,Notebooks and pens
+2024-02-06,Dropbox,15.00,Technology,Cloud storage service
+2024-02-07,Subway,9.25,Meals & Entertainment,Quick lunch during site visit
+2024-02-08,UPS Store,25.50,Shipping,Package delivery to vendor
+2024-02-09,Best Buy,299.99,Technology,External monitor for office
+2024-02-12,LinkedIn Corporation,79.99,Marketing,Premium business account
+2024-02-13,Olive Garden,45.60,Meals & Entertainment,Client dinner meeting
+2024-02-14,Exxon Mobil,51.25,Vehicle Expenses,Gas station fill-up
+2024-02-15,Zoom Video,14.99,Software,Pro video conferencing
+2024-02-16,Costco Wholesale,156.78,Office Supplies,Bulk office supplies purchase
+2024-02-19,Slack Technologies,12.50,Communications,Team collaboration tool
+2024-02-20,Pizza Hut,28.75,Meals & Entertainment,Team working dinner
+2024-02-21,Enterprise Rent-A-Car,89.00,Travel,Car rental for client visit
+2024-02-22,Salesforce,150.00,Software,CRM platform monthly fee
+2024-02-23,Dunkin Donuts,6.45,Meals & Entertainment,Morning coffee run
+2024-02-26,AT&T,75.00,Communications,Internet service
+2024-02-27,GitHub,21.00,Technology,Developer platform subscription
+2024-02-28,Target,34.99,Office Supplies,Cleaning supplies for office
+2024-03-01,Chevron,46.80,Vehicle Expenses,Gasoline purchase
+2024-03-04,QuickBooks,35.00,Software,Accounting software subscription
+2024-03-05,Red Robin,38.50,Meals & Entertainment,Team celebration lunch
+2024-03-06,Delta Air Lines,425.00,Travel,Flight to conference
+2024-03-07,Marriott International,220.00,Travel,Conference hotel stay
+2024-03-08,Uber Eats,15.75,Meals & Entertainment,Late night work session food
+2024-03-11,Google Workspace,12.00,Software,Email and collaboration tools
+2024-03-12,Office Max,78.25,Office Supplies,Filing cabinets and organizers
+2024-04-05,Joe,10.00,Meals & Entertainment,Snack
+2024-04-05,Joeee,8.00,Office Supplies,Cleaning supplies for office
+2024-04-05,Joe's Diner,100.00,Meals & Entertainment,Snack
