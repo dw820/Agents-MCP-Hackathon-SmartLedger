@@ -33,8 +33,7 @@ vllm_image = vllm_image.env({"VLLM_USE_V1": "1"})
 # You can read more about the `w4a16` "Machete" weight layout and kernels
 # [here](https://neuralmagic.com/blog/introducing-machete-a-mixed-input-gemm-kernel-optimized-for-nvidia-hopper-gpus/).
 
-MODELS_DIR = "/llamas"
-MODEL_NAME = "meta-llama/Llama-3.2-11B-Vision-Instruct"
+MODEL_NAME = "Qwen/Qwen2.5-VL-7B-Instruct"
 # MODEL_REVISION = ""
 
 # Although vLLM will download weights on-demand, we want to cache them if possible. We'll use [Modal Volumes](https://modal.com/docs/guide/volumes),
@@ -52,7 +51,7 @@ vllm_cache_vol = modal.Volume.from_name("vllm-cache", create_if_missing=True)
 # We wrap it in the [`@modal.web_server` decorator](https://modal.com/docs/guide/webhooks#non-asgi-web-servers)
 # to connect it to the Internet.
 
-app = modal.App("llama-3.2-11B-Vision-Instruct")
+app = modal.App("qwen2.5-vl-7b-instruct")
 
 N_GPU = 1  # tip: for best results, first upgrade to more powerful GPUs, and only then increase GPU count
 API_KEY = "super-secret-key"  # api key, for auth. for production use, replace with a modal.Secret
@@ -101,7 +100,7 @@ def serve():
 
 # To deploy the API on Modal, just run
 # ```bash
-# modal deploy modal/demo_llama_inference.py
+# modal deploy modal/llama_inference.py
 # ```
 
 # This will create a new app on Modal, build the container image for it if it hasn't been built yet,
