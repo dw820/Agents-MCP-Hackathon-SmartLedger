@@ -1,9 +1,4 @@
 date,vendor,amount,category,description
-2024-01-15,Starbucks Coffee,5.75,Meals & Entertainment,Morning coffee and pastry
-2024-01-16,Shell Gas Station,48.50,Vehicle Expenses,Regular gasoline fill-up
-2024-01-17,Office Depot,125.99,Office Supplies,Printer paper and ink cartridges
-2024-01-18,Uber Technologies,22.45,Travel,Ride to client meeting downtown
-2024-01-19,Microsoft Corporation,99.99,Software,Office 365 annual subscription
 2024-01-22,Amazon Web Services,45.00,Technology,Cloud hosting services
 2024-01-23,Chipotle Mexican Grill,12.85,Meals & Entertainment,Team lunch
 2024-01-24,FedEx Office,18.75,Shipping,Document delivery to client
