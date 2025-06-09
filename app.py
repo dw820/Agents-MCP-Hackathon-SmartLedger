@@ -8,6 +8,14 @@ from datetime import datetime
 
 # Setup Modal client
 try:
+    import os
+    import modal
+    
+    # Configure Modal authentication from environment variables
+    if "MODAL_TOKEN_ID" in os.environ and "MODAL_TOKEN_SECRET" in os.environ:
+        modal.config.config["token_id"] = os.environ["MODAL_TOKEN_ID"]
+        modal.config.config["token_secret"] = os.environ["MODAL_TOKEN_SECRET"]
+    
     import modal
     modal_app = modal.App.lookup("smartledger", create_if_missing=False)
     modal_create_index = modal.Function.from_name("smartledger", "create_index")
