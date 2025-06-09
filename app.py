@@ -1,6 +1,6 @@
 import gradio as gr
 import pandas as pd
-from utils.ledger_analysis import handle_csv_upload, load_sample_data, analyze_ledger_data
+from utils.ledger_analysis import handle_csv_upload, analyze_ledger_data
 from typing import Dict
 import io
 import uuid
@@ -10,12 +10,14 @@ from datetime import datetime
 try:
     import modal
     modal_app = modal.App.lookup("smartledger", create_if_missing=False)
-    modal_create_index = modal.Function.lookup("smartledger", "create_index")
-    modal_query_data = modal.Function.lookup("smartledger", "query_data") 
-    modal_check_health = modal.Function.lookup("smartledger", "check_health")
-    modal_list_sessions = modal.Function.lookup("smartledger", "list_sessions")
+    modal_create_index = modal.Function.from_name("smartledger", "create_index")
+    modal_query_data = modal.Function.from_name("smartledger", "query_data") 
+    modal_check_health = modal.Function.from_name("smartledger", "check_health")
+    modal_list_sessions = modal.Function.from_name("smartledger", "list_sessions")
+    modal_process_image = modal.Function.from_name("smartledger", "process_image_transactions")
+    modal_reconcile = modal.Function.from_name("smartledger", "reconcile_transactions")
     modal_available = True
-    print("✅ Using Modal functions with AI models")
+    print("✅ Using Modal functions with AI models and image processing")
 except Exception as e:
     print(f"⚠️ Modal not available: {e}")
     modal_available = False
@@ -23,6 +25,8 @@ except Exception as e:
     modal_query_data = None
     modal_check_health = None
     modal_list_sessions = None
+    modal_process_image = None
+    modal_reconcile = None
 
 # Global session management
 current_session_id = None
@@ -239,6 +243,96 @@ def get_vendor_analysis(csv_content: str, vendor: str = "") -> Dict:
         return {"error": f"Vendor analysis failed: {str(e)}"}
 
 
+def process_image_and_reconcile(image_file, csv_file) -> Dict:
+    """
+    Process both image and CSV files, then reconcile transactions
+    
+    Args:
+        image_file: Uploaded image file (bank statement, receipt)
+        csv_file: Uploaded CSV ledger file
+        
+    Returns:
+        Dictionary containing reconciliation results and analysis
+    """
+    global current_session_id
+    
+    try:
+        if not modal_available:
+            return {"error": "Modal functions not available"}
+        
+        if not image_file or not csv_file:
+            return {"error": "Please upload both an image and CSV file"}
+        
+        # Generate session ID
+        current_session_id = f"session_{uuid.uuid4().hex[:8]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        # Process CSV first
+        print("📊 Processing CSV file...")
+        try:
+            df = pd.read_csv(csv_file.name)
+            csv_content = df.to_csv(index=False)
+            
+            csv_result = modal_create_index.remote(csv_content, current_session_id)
+            if csv_result.get("status") != "success":
+                return {"error": f"CSV processing failed: {csv_result.get('error', 'Unknown error')}"}
+            
+            print(f"✅ CSV processed: {csv_result.get('total_transactions', 0)} transactions indexed")
+            
+        except Exception as e:
+            return {"error": f"CSV processing error: {str(e)}"}
+        
+        # Process image
+        print("📷 Processing image file...")
+        try:
+            import base64
+            
+            # Read image file and encode to base64
+            print(f"type(image_file) in process_image_and_reconcile: {type(image_file)}")
+            with open(image_file.name, "rb") as f:
+                image_bytes = f.read()
+            print(f"type(image_bytes) in process_image_and_reconcile: {type(image_bytes)}")
+            image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+            print(f"type(image_base64) in process_image_and_reconcile: {type(image_base64)}")
+            
+            image_result = modal_process_image.remote(
+                image_base64, 
+                current_session_id, 
+                image_file.name
+            )
+            
+            if image_result.get("status") != "success":
+                return {"error": f"Image processing failed: {image_result.get('error', 'Unknown error')}"}
+            
+            print(f"✅ Image processed: {image_result.get('total_transactions', 0)} transactions extracted")
+            
+        except Exception as e:
+            return {"error": f"Image processing error: {str(e)}"}
+        
+        # Reconcile transactions
+        print("🔄 Reconciling transactions...")
+        try:
+            reconcile_result = modal_reconcile.remote(current_session_id)
+            
+            if reconcile_result.get("status") != "success":
+                return {"error": f"Reconciliation failed: {reconcile_result.get('error', 'Unknown error')}"}
+            
+            print(f"✅ Reconciliation complete: {reconcile_result['summary']['total_matches']} matches found")
+            
+            return {
+                "status": "success",
+                "session_id": current_session_id,
+                "csv_transactions": csv_result.get("total_transactions", 0),
+                "image_transactions": image_result.get("total_transactions", 0),
+                "reconciliation": reconcile_result,
+                "processed_at": datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            return {"error": f"Reconciliation error: {str(e)}"}
+        
+    except Exception as e:
+        return {"error": f"Processing failed: {str(e)}"}
+
 def query_financial_data(question: str) -> Dict:
     """
     Query financial data using Modal's LLM-powered analysis.
@@ -259,18 +353,10 @@ def query_financial_data(question: str) -> Dict:
             return {"error": "Please provide a question about your financial data"}
         
         if not current_session_id:
-            return {"error": "No financial data indexed. Please upload and analyze a CSV file first."}
+            return {"error": "No financial data indexed. Please upload and analyze files first."}
             
         if not modal_available or not modal_query_data:
             return {"error": "Modal LLM functions not available. Please ensure Modal is deployed."}
-        
-        # Debug: Check available sessions
-        if modal_list_sessions:
-            try:
-                sessions_info = modal_list_sessions.remote()
-                print(f"📝 Available sessions: {sessions_info}")
-            except Exception as e:
-                print(f"⚠️ Could not list sessions: {e}")
         
         # Call Modal function for intelligent query processing
         print(f"💬 Processing query for session: {current_session_id}")
@@ -295,51 +381,108 @@ def query_financial_data(question: str) -> Dict:
     except Exception as e:
         return {"error": f"Query failed: {str(e)}"}
 
-with gr.Blocks(title="SmartLedger - Financial Analysis", theme=gr.themes.Soft()) as demo:
-        gr.Markdown("# 📊 SmartLedger - Smart Business Accounting")
-        gr.Markdown("Upload your accounting ledger CSV file to analyze transactions, spending patterns, and get financial insights.")
+with gr.Blocks(title="SmartLedger - Transaction Reconciliation", theme=gr.themes.Soft()) as demo:
+        gr.Markdown("# 📊 SmartLedger - Smart Business Accounting & Reconciliation")
+        gr.Markdown("Upload both your CSV ledger and bank statement/receipt image to automatically reconcile transactions with AI-powered confidence scoring.")
         
-        # Upload & Analyze Section
-        gr.Markdown("## 📁 Upload Ledger")
+        # Dual Upload Section
+        gr.Markdown("## 📁 Upload Files for Reconciliation")
         
-        csv_file = gr.File(
-            label="Upload CSV Ledger",
-            file_types=[".csv"],
-            value=None
-        )
+        with gr.Row():
+            with gr.Column():
+                csv_file = gr.File(
+                    label="📊 Upload CSV Ledger",
+                    file_types=[".csv"],
+                    value=None
+                )
+                gr.Markdown("*Required columns: date, vendor, amount*\n*Optional: category, description*")
+                
+            with gr.Column():
+                image_file = gr.File(
+                    label="📷 Upload Bank Statement/Receipt Image",
+                    file_types=[".jpg", ".jpeg", ".png", ".pdf"],
+                    value=None
+                )
+                print(f"type(image_file): {type(image_file)}")
+                gr.Markdown("*Supports: Bank statements, receipts, invoices*\n*Formats: JPG, PNG, PDF*")
         
-        gr.Markdown("*Required columns: date, vendor, amount*\n*Optional: category, description*")
+        reconcile_btn = gr.Button("🔄 Process & Reconcile Transactions", variant="primary", size="lg")
         
-        analyze_btn = gr.Button("Upload Ledger", variant="primary", size="lg")
-        
-        with gr.Accordion("📋 CSV Format Guide", open=False):
-            gr.Textbox(
-                value="""date,vendor,amount,category,description
+        with gr.Accordion("📋 File Format Guide", open=False):
+            with gr.Row():
+                with gr.Column():
+                    gr.Markdown("**CSV Format:**")
+                    gr.Textbox(
+                        value="""date,vendor,amount,category,description
 2024-01-15,Coffee Shop,4.50,Meals,Morning coffee
 2024-01-16,Gas Station,45.00,Vehicle,Fuel
 2024-01-17,Office Depot,23.99,Supplies,Paper""",
-                label="Expected CSV Format",
-                interactive=False,
-                lines=4,
-                max_lines=4
-            )
+                        label="Expected CSV Format",
+                        interactive=False,
+                        lines=4,
+                        max_lines=4
+                    )
+                with gr.Column():
+                    gr.Markdown("**Image Requirements:**")
+                    gr.Markdown("""
+• Clear, readable text
+• Bank statements or receipts
+• Transaction details visible
+• Date, amount, vendor information
+• JPG, PNG, or PDF format
+                    """)
         
-        # Upload Status Section
-        gr.Markdown("## 📤 Upload Status")
+        # Reconciliation Results Section
+        gr.Markdown("## 📊 Reconciliation Results")
         
-        combined_status_analysis = gr.Textbox(
-            label="Status & Financial Insights",
+        reconciliation_status = gr.Textbox(
+            label="Processing Status",
             interactive=False,
-            lines=15,
-            value="Upload a CSV file to begin analysis"
+            lines=8,
+            value="Upload both CSV and image files to begin reconciliation"
         )
         
-        ledger_dataframe = gr.Dataframe(
-            label="Transaction Data",
-            interactive=False,
-            wrap=True,
-            value=None
-        )
+        # Results Tabs
+        with gr.Tabs():
+            with gr.TabItem("🎯 Match Summary"):
+                summary_dataframe = gr.Dataframe(
+                    label="Reconciliation Summary",
+                    interactive=False,
+                    wrap=True,
+                    value=None
+                )
+                
+            with gr.TabItem("✅ High Confidence Matches"):
+                high_confidence_dataframe = gr.Dataframe(
+                    label="High Confidence Matches (≥85%)",
+                    interactive=False,
+                    wrap=True,
+                    value=None
+                )
+                
+            with gr.TabItem("⚠️ Medium Confidence Matches"):
+                medium_confidence_dataframe = gr.Dataframe(
+                    label="Medium Confidence Matches (65-84%)",
+                    interactive=False,
+                    wrap=True,
+                    value=None
+                )
+                
+            with gr.TabItem("🔍 Low Confidence Matches"):
+                low_confidence_dataframe = gr.Dataframe(
+                    label="Low Confidence Matches (<65%) - Review Required",
+                    interactive=False,
+                    wrap=True,
+                    value=None
+                )
+                
+            with gr.TabItem("❌ Unmatched Transactions"):
+                unmatched_dataframe = gr.Dataframe(
+                    label="Unmatched Transactions",
+                    interactive=False,
+                    wrap=True,
+                    value=None
+                )
         
         # AI Analysis Section
         gr.Markdown("## 🤖 AI-Powered Analysis")
@@ -386,91 +529,219 @@ with gr.Blocks(title="SmartLedger - Financial Analysis", theme=gr.themes.Soft())
 **Integration:** These tools are available for external AI agents via MCP protocol.
             """)
         
-        # Enhanced CSV handler with Modal integration
-        def enhanced_csv_upload(csv_file):
-            """Enhanced CSV upload handler with Modal LLM indexing"""
-            # First do the standard analysis
-            status, df, analysis = handle_csv_upload(csv_file)
-            
-            # If successful, also index with Modal
-            if df is not None:
-                try:
-                    # Convert dataframe to CSV for Modal analysis
-                    csv_content = df.to_csv(index=False)
-                    modal_result = analyze_ledger_from_csv(csv_content)
+        # Enhanced dual file processing handler
+        def process_dual_upload(image_file, csv_file):
+            """Process both image and CSV files and reconcile transactions"""
+            try:
+                result = process_image_and_reconcile(image_file, csv_file)
+                
+                if result.get("status") == "success":
+                    reconciliation = result["reconciliation"]
+                    summary = reconciliation["summary"]
                     
-                    if modal_result.get("status") == "success":
-                        modal_status = modal_result.get("indexing_status", "Unknown status")
-                        status += f"\n{modal_status}"
+                    # Create status message
+                    status = f"""✅ Processing Complete!
+                    
+📊 **Processing Summary:**
+• CSV Transactions: {result['csv_transactions']}
+• Image Transactions: {result['image_transactions']} 
+• Total Matches: {summary['total_matches']} ({summary['match_rate']}% match rate)
+
+🎯 **Confidence Breakdown:**
+• High Confidence (≥85%): {summary['high_confidence_matches']} transactions
+• Medium Confidence (65-84%): {summary['medium_confidence_matches']} transactions  
+• Low Confidence (<65%): {summary['low_confidence_matches']} transactions
+
+💰 **Financial Summary:**
+• Total Image Amount: ${summary['total_image_amount']}
+• Total Matched Amount: ${summary['total_matched_amount']} ({summary['reconciliation_percentage']}%)
+• Unmatched Image Transactions: {summary['unmatched_image_transactions']}
+
+Session ID: {result['session_id'][:20]}..."""
+
+                    # Create summary dataframe
+                    summary_data = pd.DataFrame([{
+                        "Metric": "CSV Transactions",
+                        "Value": summary["total_csv_transactions"]
+                    }, {
+                        "Metric": "Image Transactions", 
+                        "Value": summary["total_image_transactions"]
+                    }, {
+                        "Metric": "Total Matches",
+                        "Value": f"{summary['total_matches']} ({summary['match_rate']}%)"
+                    }, {
+                        "Metric": "High Confidence Matches",
+                        "Value": summary["high_confidence_matches"]
+                    }, {
+                        "Metric": "Medium Confidence Matches", 
+                        "Value": summary["medium_confidence_matches"]
+                    }, {
+                        "Metric": "Low Confidence Matches",
+                        "Value": summary["low_confidence_matches"]
+                    }, {
+                        "Metric": "Match Rate",
+                        "Value": f"{summary['match_rate']}%"
+                    }, {
+                        "Metric": "Reconciliation %",
+                        "Value": f"{summary['reconciliation_percentage']}%"
+                    }])
+                    
+                    # Create match dataframes
+                    def format_matches(matches):
+                        if not matches:
+                            return pd.DataFrame({"Message": ["No matches in this category"]})
                         
-                        # Add Modal session info
-                        if modal_result.get("session_id"):
-                            status += f"\nSession ID: {modal_result['session_id'][:20]}..."
+                        formatted = []
+                        for match in matches:
+                            csv_txn = match["csv_transaction"]
+                            img_txn = match["image_transaction"]
                             
-                        # Enhance analysis with Modal insights
-                        if modal_result.get("llm_ready"):
-                            analysis += f"\n\n🤖 AI Analysis Ready:\n• {modal_result['summary']['total_transactions']} transactions indexed\n• Modal LLM functions available for intelligent queries\n• Ask questions in the AI Analysis section below"
-                    else:
-                        status += f"\n⚠️ Modal analysis failed: {modal_result.get('error', 'Unknown error')}"
-                        
-                except Exception as e:
-                    status += f"\n⚠️ Modal analysis error: {str(e)}"
-            
-            # Combine status and analysis
-            combined_output = f"{status}\n\n--- FINANCIAL INSIGHTS ---\n{analysis}"
-            return combined_output, df
+                            formatted.append({
+                                "Confidence": f"{match['confidence_score']*100:.1f}%",
+                                "CSV Date": csv_txn.get("date", ""),
+                                "CSV Vendor": csv_txn.get("vendor", ""),
+                                "CSV Amount": f"${csv_txn.get('amount', 0):.2f}",
+                                "Image Date": img_txn.get("date", ""),
+                                "Image Vendor": img_txn.get("vendor", ""),
+                                "Image Amount": f"${img_txn.get('amount', 0):.2f}",
+                                "Match Reasons": ", ".join(match.get("match_reasons", [])),
+                                "Discrepancies": ", ".join(match.get("discrepancies", []))
+                            })
+                        return pd.DataFrame(formatted)
+                    
+                    high_conf_df = format_matches(reconciliation["matches"]["high_confidence"])
+                    med_conf_df = format_matches(reconciliation["matches"]["medium_confidence"])
+                    low_conf_df = format_matches(reconciliation["matches"]["low_confidence"])
+                    
+                    # Create unmatched dataframes
+                    unmatched_data = []
+                    for txn in reconciliation["unmatched"]["image_transactions"]:
+                        unmatched_data.append({
+                            "Source": "Image (Unmatched)",
+                            "Date": txn.get("date", ""),
+                            "Vendor": txn.get("vendor", ""),
+                            "Amount": f"${txn.get('amount', 0):.2f}",
+                            "Description": txn.get("description", "")
+                        })
+                    for txn in reconciliation["unmatched"]["csv_transactions"]:
+                        unmatched_data.append({
+                            "Source": "CSV (Unmatched)",
+                            "Date": txn.get("date", ""),
+                            "Vendor": txn.get("vendor", ""),
+                            "Amount": f"${txn.get('amount', 0):.2f}",
+                            "Description": txn.get("description", "")
+                        })
+                    
+                    unmatched_df = pd.DataFrame(unmatched_data) if unmatched_data else pd.DataFrame({"Message": ["No unmatched transactions"]})
+                    
+                    return status, summary_data, high_conf_df, med_conf_df, low_conf_df, unmatched_df
+                    
+                else:
+                    error_msg = f"❌ Processing Failed: {result.get('error', 'Unknown error')}"
+                    empty_df = pd.DataFrame({"Error": [result.get('error', 'Unknown error')]})
+                    return error_msg, empty_df, empty_df, empty_df, empty_df, empty_df
+                    
+            except Exception as e:
+                error_msg = f"❌ Error during processing: {str(e)}"
+                empty_df = pd.DataFrame({"Error": [str(e)]})
+                return error_msg, empty_df, empty_df, empty_df, empty_df, empty_df
         
         # Event handlers
-        analyze_btn.click(
-            fn=enhanced_csv_upload,
-            inputs=[csv_file],
-            outputs=[combined_status_analysis, ledger_dataframe]
+        reconcile_btn.click(
+            fn=process_dual_upload,
+            inputs=[image_file, csv_file],
+            outputs=[reconciliation_status, summary_dataframe, high_confidence_dataframe, 
+                    medium_confidence_dataframe, low_confidence_dataframe, unmatched_dataframe]
         )
         
-        # Auto-analyze when file is uploaded
-        csv_file.change(
-            fn=enhanced_csv_upload,
-            inputs=[csv_file],
-            outputs=[combined_status_analysis, ledger_dataframe]
-        )
+        # Quick Test Section with sample data
+        gr.Markdown("## 🎯 Quick Test")
+        sample_btn = gr.Button("📄 Load Sample Data (CSV + Mock Image)", variant="secondary", size="lg")
         
-        # Enhanced sample data handler with Modal indexing
-        def enhanced_sample_data():
-            """Enhanced sample data loader with Modal LLM indexing"""
-            status, df, analysis = load_sample_data()
-            
-            # Also index the sample data with Modal
-            if df is not None:
-                try:
-                    # Convert dataframe to CSV for Modal analysis
-                    csv_content = df.to_csv(index=False)
-                    modal_result = analyze_ledger_from_csv(csv_content)
-                    
-                    if modal_result.get("status") == "success":
-                        modal_status = modal_result.get("indexing_status", "Unknown status")
-                        status += f"\n{modal_status}"
-                        
-                        # Add Modal session info
-                        if modal_result.get("session_id"):
-                            status += f"\nSession ID: {modal_result['session_id'][:20]}..."
-                            
-                        # Enhance analysis with Modal insights
-                        if modal_result.get("llm_ready"):
-                            analysis += f"\n\n🤖 AI Analysis Ready:\n• {modal_result['summary']['total_transactions']} transactions indexed\n• Modal LLM functions available for intelligent queries\n• Try asking: 'What are my highest spending categories?'"
-                    else:
-                        status += f"\n⚠️ Modal analysis failed: {modal_result.get('error', 'Unknown error')}"
-                        
-                except Exception as e:
-                    status += f"\n⚠️ Modal analysis error: {str(e)}"
-            
-            # Combine status and analysis
-            combined_output = f"{status}\n\n--- FINANCIAL INSIGHTS ---\n{analysis}"
-            return combined_output, df
+        def load_sample_for_reconciliation():
+            """Load sample data and create a mock reconciliation scenario"""
+            try:
+                
+                # Mock reconciliation result for demonstration
+                status = """✅ Sample Data Loaded!
+
+📊 **Processing Summary:**
+• CSV Transactions: 5
+• Image Transactions: 3 (simulated)
+• Total Matches: 2 (66.7% match rate)
+
+🎯 **Confidence Breakdown:**
+• High Confidence (≥85%): 1 transactions
+• Medium Confidence (65-84%): 1 transactions
+• Low Confidence (<65%): 0 transactions
+
+💰 **Financial Summary:**
+• Total Image Amount: $68.49
+• Total Matched Amount: $49.50 (72.3%)
+• Unmatched Image Transactions: 1
+
+🧪 This is sample data for demonstration purposes."""
+
+                # Create sample summary
+                summary_data = pd.DataFrame([
+                    {"Metric": "CSV Transactions", "Value": 5},
+                    {"Metric": "Image Transactions", "Value": 3},
+                    {"Metric": "Total Matches", "Value": "2 (66.7%)"},
+                    {"Metric": "High Confidence Matches", "Value": 1},
+                    {"Metric": "Medium Confidence Matches", "Value": 1},
+                    {"Metric": "Low Confidence Matches", "Value": 0},
+                    {"Metric": "Match Rate", "Value": "66.7%"},
+                    {"Metric": "Reconciliation %", "Value": "72.3%"}
+                ])
+                
+                # Sample high confidence match
+                high_conf = pd.DataFrame([{
+                    "Confidence": "92.5%",
+                    "CSV Date": "2024-01-15",
+                    "CSV Vendor": "Coffee Shop Downtown",
+                    "CSV Amount": "$4.50",
+                    "Image Date": "2024-01-15", 
+                    "Image Vendor": "Coffee Shop",
+                    "Image Amount": "$4.50",
+                    "Match Reasons": "Exact amount match, Exact date match, Partial vendor match",
+                    "Discrepancies": ""
+                }])
+                
+                # Sample medium confidence match
+                med_conf = pd.DataFrame([{
+                    "Confidence": "78.0%",
+                    "CSV Date": "2024-01-16",
+                    "CSV Vendor": "Shell Gas Station", 
+                    "CSV Amount": "$45.00",
+                    "Image Date": "2024-01-16",
+                    "Image Vendor": "Shell",
+                    "Image Amount": "$45.00",
+                    "Match Reasons": "Exact amount match, Exact date match, Vendor keyword match",
+                    "Discrepancies": "Vendor difference: SHELL GAS STATION vs SHELL"
+                }])
+                
+                # Empty low confidence 
+                low_conf = pd.DataFrame({"Message": ["No matches in this category"]})
+                
+                # Sample unmatched
+                unmatched = pd.DataFrame([
+                    {"Source": "Image (Unmatched)", "Date": "2024-01-17", "Vendor": "Amazon", "Amount": "$18.99", "Description": "Online purchase"},
+                    {"Source": "CSV (Unmatched)", "Date": "2024-01-17", "Vendor": "Office Depot", "Amount": "$23.99", "Description": "Printer paper"},
+                    {"Source": "CSV (Unmatched)", "Date": "2024-01-18", "Vendor": "Uber Technologies", "Amount": "$18.75", "Description": "Ride to meeting"},
+                    {"Source": "CSV (Unmatched)", "Date": "2024-01-19", "Vendor": "Microsoft Corporation", "Amount": "$99.99", "Description": "Office 365"}
+                ])
+                
+                return status, summary_data, high_conf, med_conf, low_conf, unmatched
+                
+            except Exception as e:
+                error_msg = f"❌ Error loading sample data: {str(e)}"
+                empty_df = pd.DataFrame({"Error": [str(e)]})
+                return error_msg, empty_df, empty_df, empty_df, empty_df, empty_df
         
-        # Sample data handler
         sample_btn.click(
-            fn=enhanced_sample_data,
-            outputs=[combined_status_analysis, ledger_dataframe]
+            fn=load_sample_for_reconciliation,
+            outputs=[reconciliation_status, summary_dataframe, high_confidence_dataframe,
+                    medium_confidence_dataframe, low_confidence_dataframe, unmatched_dataframe]
         )
         
         # AI Analysis handler
